@@ -1,0 +1,1 @@
+Data can be found at https://github.com/abhinavsagar/Grocery-Product-Classification. There are nearly 5,000 pitcures from 25 classes.  
