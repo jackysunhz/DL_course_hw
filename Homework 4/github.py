@@ -1,43 +1,106 @@
+# some links
+# https://towardsdatascience.com/use-torchtext-to-load-nlp-datasets-part-i-5da6f1c89d84
+# https://github.com/hpanwar08/sentiment-analysis-torchtext/blob/master/Sentiment_Analysis_torchtext.ipynb
+
+
+
 
 import torch
 import torchtext
 from torchtext.datasets import text_classification
 import torch.nn as nn
 import torch.nn.functional as F
+from torchtext.data import Field
 from torch.utils.data import DataLoader
 import time
 from torch.utils.data.dataset import random_split
-import os
 import pandas as pd
+import numpy as np
 import re
 from torchtext.data.utils import ngrams_iterator
 from torchtext.data.utils import get_tokenizer
 
 NGRAMS = 2
 
+# from website
 train_dataset, test_dataset = text_classification.DATASETS['AG_NEWS'](
     root='data', ngrams=NGRAMS, vocab=None)
 
-train_d = pd.read_csv("data/train.csv")
+
+########################
+# process csv file if using both training and validation set for inputs
+
+def prepare_csv(val_ratio = 0.2):
+    df_train = pd.read_csv("data/train.csv")
+    idx = np.arange(df_train.shape[0])
+    np.random.seed(42)
+    np.random.shuffle(idx)
+    val_size = int(len(idx) * val_ratio)
+    df_train.iloc[idx[val_size:], :].to_csv('temp/d_train.csv', index=False)
+    df_train.iloc[idx[:val_size], :].to_csv("temp/d_val.csv", index=False)
+
+prepare_csv()
+
+# preprocessing
+tokenizer = lambda x: x.split()
+
+txt_field = torchtext.data.Field(sequential=True, tokenize=tokenizer, include_lengths=True, use_vocab=True)
+label_field = torchtext.data.Field(sequential=False, use_vocab=False, pad_token=None, unk_token=None)
+
+train_val_fields = [
+    ('labels', label_field),
+    ('text', txt_field)
+]
+
+trainds, valds = torchtext.data.TabularDataset.splits(
+path='temp/',train='d_train.csv',validation='d_val.csv', format='csv',skip_header=True,
+fields=train_val_fields)
+
+test_dataset = torchtext.data.TabularDataset(
+path='data/test.csv', format='csv',skip_header=True,
+fields=[('text', txt_field)])
+
+# build vocabulary
+# we don't need a pre-train vector
+
+txt_field.build_vocab(trainds, valds)
+label_field.build_vocab(trainds)
+vars(label_field.vocab)
+
+# load data in batches
+traindl, valdl = torchtext.data.BucketIterator.splits(datasets=(trainds, valds),
+                                            batch_sizes=(3,3),
+                                            sort_key=lambda x: len(x.text),
+                                            device=None,
+                                            sort_within_batch=True,
+                                            repeat=False)
+
+len(traindl)
+len(valdl)
+
+batch=next(iter(traindl))
+batch.labels
+
+# return word indices and lengths
+batch.text
+
+batch.dataset.fields
+txt_field.vocab.itos[1]
+
+def idxtosent(batch, idx):
+    return ' '.join([txt_field.vocab.itos[i] for i in batch.text[0][:,idx].cpu().data.numpy()])
+
+idxtosent(batch,0)
+
+batch.__dict__
+
+val_batch = next(iter(valdl))
+val_batch.__dict__
+
 
 
 ########################
-# understand the dataset subclass
 
-train_d = torchtext.data.TabularDataset(
-path='data/train.csv', format='csv',
-fields=[('text', torchtext.data.Field()),
-        ('labels', torchtext.data.Field())])
-
-test_d = torchtext.data.TabularDataset(
-path='data/test.csv', format='csv',
-fields=[('text', torchtext.data.Field()))
-
-test_d = pd.read_csv("data/test.csv")
-
-########################
-
-BATCH_SIZE = 16
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 # define class
@@ -58,15 +121,15 @@ class TextSentiment(nn.Module):
         embedded = self.embedding(text, offsets)
         return self.fc(embedded)
 
-VOCAB_SIZE = len(train_dataset.get_vocab())
+VOCAB_SIZE = len(txt_field.vocab)
 EMBED_DIM = 32
-NUN_CLASS = len(train_dataset.get_labels())
+NUN_CLASS = 4
 model = TextSentiment(VOCAB_SIZE, EMBED_DIM, NUN_CLASS).to(device)
 
 def generate_batch(batch):
-    label = torch.tensor([entry[0] for entry in batch])
-    text = [entry[1] for entry in batch]
-    offsets = [0] + [len(entry) for entry in text]
+    label = torch.tensor([int(entry.labels) for entry in batch])
+    text = [entry.text for entry in batch]
+    offsets = [0] + [len(entry.text) + len(entry.labels) for entry in text]
     # torch.Tensor.cumsum returns the cumulative sum
     # of elements in the dimension dim.
     # torch.Tensor([1.0, 2.0, 3.0]).cumsum(dim=0)
@@ -111,16 +174,12 @@ def test(data_):
 
     return loss / len(data_), acc / len(data_)
 
-N_EPOCHS = 5
+N_EPOCHS = 2
 min_valid_loss = float('inf')
 
 criterion = torch.nn.CrossEntropyLoss().to(device)
 optimizer = torch.optim.SGD(model.parameters(), lr=4.0)
 scheduler = torch.optim.lr_scheduler.StepLR(optimizer, 1, gamma=0.9)
-
-train_len = int(len(train_dataset) * 0.95)
-sub_train_, sub_valid_ = \
-    random_split(train_dataset, [train_len, len(train_dataset) - train_len])
 
 for epoch in range(N_EPOCHS):
 
