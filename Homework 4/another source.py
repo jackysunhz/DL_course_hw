@@ -1,8 +1,4 @@
-# some links
-# https://towardsdatascience.com/use-torchtext-to-load-nlp-datasets-part-i-5da6f1c89d84
-# https://github.com/hpanwar08/sentiment-analysis-torchtext/blob/master/Sentiment_Analysis_torchtext.ipynb
-
-
+# https://github.com/keitakurita/practical-torchtext/blob/master/Lesson%201%20intro%20to%20torchtext%20with%20text%20classification.ipynb
 
 
 import torch
@@ -54,7 +50,6 @@ path='data/test.csv', format='csv',skip_header=True,
 fields=[('text', txt_field)])
 
 # build vocabulary
-# we don't need a pre-train vector
 
 txt_field.build_vocab(trainds, valds)
 label_field.build_vocab(trainds)
@@ -62,14 +57,7 @@ vars(label_field.vocab)
 
 # load data in batches
 # BATCH_SIZE = 3
-"""
-traindl, valdl = torchtext.data.BucketIterator.splits(datasets=(trainds, valds),
-                                            batch_sizes=(BATCH_SIZE,BATCH_SIZE),
-                                            sort_key=lambda x: len(x.text),
-                                            device=None,
-                                            sort_within_batch=True,
-                                            repeat=False)
-"""
+
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 

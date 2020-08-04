@@ -51,7 +51,7 @@ fields=[('labels', torchtext.data.Field()),
 
 tokenize = lambda x: x.split()
 TEXT = Field(sequential=True, tokenize=tokenize, lower=True)
-LABEL = Field(sequential=False, use_vocab=False)
+LABEL = Field(sequential=False, use_vocab=False, pad_token=None, unk_token=None)
 
 train_dataset = torchtext.data.TabularDataset(
 path='data/train.csv', format='csv',skip_header=True,
@@ -62,13 +62,29 @@ test_dataset = torchtext.data.TabularDataset(
 path='data/test.csv', format='csv',skip_header=True,
 fields=[('text', TEXT)])
 
+TEXT.build_vocab(train_dataset)
+LABEL.build_vocab(train_dataset)
 
+# I need a bucketiterator
 train_len = int(len(train_dataset) * 0.9)
-sub_train_, sub_valid_ = \
+sub_train_temp, sub_valid_temp = \
     random_split(train_dataset, [train_len, len(train_dataset) - train_len])
 
-TEXT.build_vocab(train_dataset)
+sub_train_, sub_valid_ = torchtext.data.BucketIterator.splits(datasets=(sub_train_temp, sub_valid_temp),
+                                            batch_sizes=(16,16),
+                                            sort_key=lambda x: len(x.text),
+                                            device=None,
+                                            sort_within_batch=True,
+                                            repeat=False)
 
+
+
+temp = next(iter(sub_train_))
+temp.text
+
+train_dataset.examples[2].text
+
+TEXT.vocab.stoi
 
 
 ########################
@@ -102,7 +118,7 @@ model = TextSentiment(VOCAB_SIZE, EMBED_DIM, NUN_CLASS).to(device)
 def generate_batch(batch):
     label = torch.tensor([int(entry.labels) for entry in batch])
     text = [entry.text for entry in batch]
-    offsets = [0] + [len(entry.text) + len(entry.labels) for entry in text]
+    offsets = [0] + [len(entry) for entry in text]
     # torch.Tensor.cumsum returns the cumulative sum
     # of elements in the dimension dim.
     # torch.Tensor([1.0, 2.0, 3.0]).cumsum(dim=0)
