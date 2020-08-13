@@ -1,3 +1,3 @@
 # DL_course_hw
 
-The final grade of homework will be evaluated using four out of five homework with highest grades. If none of your four homework outperforms the benchmark, you will receive a B. If one of your four homework outperforms the benchmark, you will receive a B+. If two out of four homework outperform the benchmark, you will receive an A-. If three or more of your homework outperform the benchmark, you will receive an A.  
+The final grade of homework will be evaluated using four out of five homework (excluding homework 0) with highest grades. If none of your four homework have A, you will receive a B. If one of your four homework has A, your total grade for homework will be B+. If two out of four homework have A, you will receive an A-. If three or more of your four homework have A, you will receive an A.   
