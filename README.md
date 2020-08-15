@@ -1,3 +1,3 @@
 # DL_course_hw
 
-The final grade of homework will be evaluated using four out of five homework (excluding homework 0) with highest grades. If none of your four homework have A, you will receive a B. If one of your four homework has A, your total grade for homework will be B+. If two out of four homework have A, you will receive an A-. If three or more of your four homework have A, you will receive an A.   
+This repository contains all the assignments for DS-5660 in Fall 2020.  
